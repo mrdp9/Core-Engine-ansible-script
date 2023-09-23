@@ -1,0 +1,126 @@
+---
+- name: core-engine ansible script
+  hosts: localhost
+  gather_facts: no
+  become: yes
+
+  vars:
+    ansible_become_pass: "<your_sudo password>"
+
+  tasks:
+    - name: Check PostgreSQL User and Database
+      postgresql_user:
+        name: "hornet"
+        login_user: postgres
+        login_password: "8900"
+        db: postgres
+      register: postgres_user_check
+
+    - name: Check if PostgreSQL database "hornet" exists
+      postgresql_db:
+        name: "hornet"
+        login_user: postgres
+        login_password: "8900"
+        db: postgres
+      register: postgres_db_check
+
+    - name: Create PostgreSQL user "hornet" with password and necessary permissions
+      postgresql_user:
+        name: "hornet"
+        password: "H0rnSt@r"
+        priv: "ALL"
+        login_user: postgres
+        login_password: "8900"
+        db: postgres
+        role_attr_flags: CREATEDB
+      when: postgres_user_check.changed
+
+    - name: Create PostgreSQL database "hornet" owned by "hornet" user
+      postgresql_db:
+        name: "hornet"
+        owner: "hornet"
+        login_user: postgres
+        login_password: "8900"
+        db: postgres
+      when: postgres_db_check.changed
+
+    - name: Find core-engine directory
+      ansible.builtin.find:
+        paths: /home/hornet/Development/hornet/bitbucket/
+        patterns: core-engine
+        recurse: yes
+      register: core_engine_dir
+
+    - name: Display core-engine directory paths
+      debug:
+        var: core_engine_dir.files
+
+    - name: Clone core-engine repository if not present
+      git:
+        repo: git@bitbucket.org:hornetdefiant/core-engine.git
+        dest: /home/hornet/Development/hornet/bitbucket/core-engine
+        update: no
+      when: core_engine_dir.matched == 0
+
+    - name: Check for .hornet hidden directory
+      ansible.builtin.stat:
+        path: /root/.hornet
+      register: hornet_hidden_dir
+
+    - name: Clone .hornet repository if not present
+      git:
+        repo: git@bitbucket.org:hornetdefiant/.hornet.git
+        dest: /root/.hornet
+        update: no
+      when: hornet_hidden_dir.stat.exists == false
+
+    - name: Display .hornet directory information
+      debug:
+        var: hornet_hidden_dir.stat
+
+- name: Git Clone and Move
+  hosts: localhost
+  gather_facts: no
+  become: yes
+
+  tasks:
+    - name: Check if /home/devops-hornet/ directory exists
+      ansible.builtin.stat:
+        path: /home/devops-hornet/
+      register: devops_hornet_dir
+
+    - name: Display /home/devops-hornet/ directory information
+      debug:
+        var: devops_hornet_dir.stat
+
+    - name: Clone the Git repository if /home/devops-hornet/ doesn't exist
+      when: devops_hornet_dir.stat.exists == false
+      shell: git clone --origin origin git@bitbucket.org:hornetdefiant/devops-hornet.git /home/devops-hornet
+
+    - name: Move content to /etc/systemd/system/
+      ansible.builtin.shell: sudo mv /home/devops-hornet/* /etc/systemd/system/
+      when: devops_hornet_dir.stat.exists == false
+
+    - name: Delay for 3 seconds before enabling core-engine
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Enable core-engine service
+      ansible.builtin.shell: sudo systemctl enable core-engine
+      when: devops_hornet_dir.stat.exists == false
+
+    - name: Delay for 3 seconds before daemon-reload
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Reload systemd daemon
+      ansible.builtin.shell: sudo systemctl daemon-reload
+      when: devops_hornet_dir.stat.exists == false
+
+    - name: Delay for 3 seconds before starting core-engine
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Start core-engine service
+      ansible.builtin.shell: sudo systemctl start core-engine
+      when: devops_hornet_dir.stat.exists == false
