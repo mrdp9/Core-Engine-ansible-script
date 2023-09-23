@@ -30,7 +30,7 @@
         password: "your_postgres_password"
         priv: "ALL"
         login_user: postgres
-        login_password: "8900"
+        login_password: "your_postgres_db_password"
         db: postgres
         role_attr_flags: CREATEDB
       when: postgres_user_check.changed
