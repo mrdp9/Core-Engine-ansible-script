@@ -12,7 +12,7 @@
       postgresql_user:
         name: "hornet"
         login_user: postgres
-        login_password: "8900"
+        login_password: "your_postgres_db_password"
         db: postgres
       register: postgres_user_check
 
@@ -20,14 +20,14 @@
       postgresql_db:
         name: "hornet"
         login_user: postgres
-        login_password: "8900"
+        login_password: "your_postgres_db_password"
         db: postgres
       register: postgres_db_check
 
     - name: Create PostgreSQL user "hornet" with password and necessary permissions
       postgresql_user:
         name: "hornet"
-        password: "H0rnSt@r"
+        password: "your_postgres_password"
         priv: "ALL"
         login_user: postgres
         login_password: "8900"
@@ -40,7 +40,7 @@
         name: "hornet"
         owner: "hornet"
         login_user: postgres
-        login_password: "8900"
+        login_password: "your_postgres_db_password"
         db: postgres
       when: postgres_db_check.changed
 
